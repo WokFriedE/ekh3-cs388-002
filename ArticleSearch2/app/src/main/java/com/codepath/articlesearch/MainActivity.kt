@@ -2,13 +2,18 @@ package com.codepath.articlesearch
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.codepath.articlesearch.databinding.ActivityMainBinding
 import com.codepath.asynchttpclient.AsyncHttpClient
 import com.codepath.asynchttpclient.callback.JsonHttpResponseHandler
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import okhttp3.Headers
 import org.json.JSONException
@@ -27,11 +32,18 @@ private const val ARTICLE_SEARCH_URL =
 class MainActivity : AppCompatActivity() {
     private lateinit var articlesRecyclerView: RecyclerView
     private lateinit var binding: ActivityMainBinding
-    private val articles = mutableListOf<Article>()
+    private val articles = mutableListOf<DisplayArticle>()
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+//        val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.menu_refresh)
+//
+//        swipeRefreshLayout.setOnRefreshListener{
+//            Toast.makeText(applicationContext, "Hello", Toast.LENGTH_SHORT).show()
+//            swipeRefreshLayout.isRefreshing = false
+//        }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         val view = binding.root
@@ -42,11 +54,29 @@ class MainActivity : AppCompatActivity() {
         val articleAdapter = ArticleAdapter(this, articles)
         articlesRecyclerView.adapter = articleAdapter
 
+        lifecycleScope.launch {
+            (application as ArticleApplication).db.articleDao().getAll().collect { databaseList ->
+                databaseList.map { entity ->
+                    DisplayArticle(
+                        entity.headline,
+                        entity.articleAbstract,
+                        entity.byline,
+                        entity.mediaImageUrl
+                    )
+                }.also { mappedList ->
+                    articles.clear()
+                    articles.addAll(mappedList)
+                    articleAdapter.notifyDataSetChanged()
+                }
+            }
+        }
+
 
         articlesRecyclerView.layoutManager = LinearLayoutManager(this).also {
             val dividerItemDecoration = DividerItemDecoration(this, it.orientation)
             articlesRecyclerView.addItemDecoration(dividerItemDecoration)
         }
+
 
         val client = AsyncHttpClient()
         client.get(ARTICLE_SEARCH_URL, object : JsonHttpResponseHandler() {
@@ -63,7 +93,6 @@ class MainActivity : AppCompatActivity() {
                 Log.i(TAG, "Successfully fetched articles: $json")
                 try {
                     // TODO: Create the parsedJSON
-
                     // TODO: Do something with the returned json (contains article information)
                     val parsedJson = createJson().decodeFromString(
                         SearchNewsResponse.serializer(),
@@ -71,23 +100,31 @@ class MainActivity : AppCompatActivity() {
                     )
 
                     // TODO: Save the articles
-
                     // TODO: Reload the screen
                     // TODO: Save the articles and reload the screen
                     // Save the articles
                     parsedJson.response?.docs?.let { list ->
-                        articles.addAll(list)
-
-                        // Reload the screen
-                        articleAdapter.notifyDataSetChanged()
+                        lifecycleScope.launch(IO) {
+                            (application as ArticleApplication).db.articleDao().deleteAll()
+                            (application as ArticleApplication).db.articleDao()
+                                .insertAll(list.map {
+                                    ArticleEntity(
+                                        headline = it.headline?.main,
+                                        articleAbstract = it.abstract,
+                                        byline = it.byline?.original,
+                                        mediaImageUrl = it.mediaImageUrl
+                                    )
+                                }
+                                )
+                        }
                     }
-
                 } catch (e: JSONException) {
                     Log.e(TAG, "Exception: $e")
                 }
             }
 
-        })
+        }
+        )
 
     }
 }
