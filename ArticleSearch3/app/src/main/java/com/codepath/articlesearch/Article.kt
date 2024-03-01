@@ -10,6 +10,7 @@ data class SearchNewsResponse(
     @SerialName("response")
     val response: BaseResponse?
 )
+
 @Keep
 @Serializable
 data class BaseResponse(
@@ -20,17 +21,23 @@ data class BaseResponse(
 @Keep
 @Serializable
 data class Article(
-    @SerialName("abstract") // used to parse API
-    val abstract: String?,
-    @SerialName("byline")
-    val byline: Byline?,
+    @SerialName("web_url")
+    val webUrl: String?,
+    @SerialName("pub_date")
+    val pubDate: String?,
     @SerialName("headline")
     val headline: HeadLine?,
     @SerialName("multimedia")
     val multimedia: List<MultiMedia>?,
-): java.io.Serializable {
-    val mediaImageUrl = "https://www.nytimes.com/${multimedia?.firstOrNull { it.url != null }?.url ?: ""}"
+    @SerialName("abstract")
+    val abstract: String?,
+    @SerialName("byline")
+    val byline: Byline?,
+) : java.io.Serializable {
+    val mediaImageUrl =
+        "https://www.nytimes.com/${multimedia?.firstOrNull { it.url != null }?.url ?: ""}"
 }
+
 @Keep
 @Serializable
 data class HeadLine(

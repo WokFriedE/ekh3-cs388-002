@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph">
+
+    <fragment
+        android:id="@+id/bookFragment"
+        android:name="com.codepath.articlesearch.BestSellerBooksFragment"
+        android:label="BookFragment" />
+    <fragment
+        android:id="@+id/articleFragment"
+        android:name="com.codepath.articlesearch.ArticleListFragment"
+        android:label="ArticleFragment" />
+</navigation>
